@@ -30,14 +30,49 @@ The main driver for our code. This will handle user input and updating graphics.
 def main():
     screen = p.display.set_mode((WIDTH, HEIGHT))
     clock = p.time.Clock()
-    screen.fill(p.Color("white"))
+    #screen.fill(p.Color("white"))
     gs = ChessEngine.GameState()
+    valid_moves = gs.get_valid_moves()
+    move_made = False # flag variable for when a move is made (that's when we update valid_moves, rather than every frame)
     load_images() # only once before the while loop!
     running = True
+    sq_selected = () # no square is selected, keep tack of the last click of the user (tuple: row,col)
+    player_clicks = [] # keep track of player clicks (two tuples: e.g. [(6,5),(4,4)])
+
     while running:
         for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
+
+            # mouse handler
+            elif e.type == p.MOUSEBUTTONDOWN:
+                location = p.mouse.get_pos() # (x,y) location of mouse
+                col = location[0]//SQ_SIZE 
+                row = location[1]//SQ_SIZE
+                if sq_selected == (row,col): # user clicked same square twice
+                    sq_selected = () # deselect
+                    player_clicks = [] # clear player clicks
+                else:
+                    sq_selected = (row,col)
+                    player_clicks.append(sq_selected) # append for both 1st and 2nd click
+                if len(player_clicks) == 2: # after second click
+                    move = ChessEngine.Move(player_clicks[0],player_clicks[1],gs.board)
+                    print(move.get_chess_notation())
+                    if move in valid_moves:
+                        gs.make_move(move)
+                        move_made = True # changing the flag so we can update valid_moves list
+                    sq_selected = () # reset user clicks
+                    player_clicks = []
+
+            # key handler
+            elif e.type == p.KEYDOWN:
+                if e.key == p.K_z: # z is our undo key
+                    gs.undo_move()
+                    move_made = True
+
+        if move_made:
+            validMoves = gs.get_valid_moves() # updating the valid_moves list
+            move_made = False  # resetting the flag back to false
         draw_game_state(screen,gs)
         clock.tick(MAX_FPS)
         p.display.flip()
